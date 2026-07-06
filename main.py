@@ -22,7 +22,7 @@ _email_re = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
 
 class ValidationResult(BaseModel):
     email: str
-    valid: bool
+    valid: Optional[bool] = None  # True = valid, False = invalid, None = partial
     reason: str
     mx_server: Optional[str] = None
     domain: Optional[str] = None
@@ -80,7 +80,10 @@ def validate_email(email: str) -> ValidationResult:
         return ValidationResult(email=email, valid=False, reason="No MX record found", domain=domain)
 
     # Step 3: SMTP handshake
-    valid, reason = smtp_check(email, mx)
+    try:
+        valid, reason = smtp_check(email, mx)
+    except Exception:
+        valid, reason = None, "SMTP check failed"
 
     return ValidationResult(
         email=email,
