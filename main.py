@@ -48,23 +48,22 @@ def smtp_check(email: str, mx: str) -> tuple[bool, str]:
         server.mail("verify@validator.local")
         code, msg = server.rcpt(email)
         server.quit()
-
         if code == 250:
-            return True, "Email exists"
+            return True, "Email verified"
         elif code == 550:
-            return False, "Mailbox not found"
-        elif code == 451:
-            return False, "Temporary failure, try later"
+            return False, "Mailbox does not exist"
         else:
-            return False, f"Server rejected: {code}"
+            return None, f"Partial validation (MX exists, SMTP returned {code})"
     except smtplib.SMTPConnectError:
-        return False, "Could not connect to mail server"
+        return None, "Partial validation (MX verified, SMTP unavailable)"
     except smtplib.SMTPServerDisconnected:
-        return False, "Server disconnected"
+        return None, "Partial validation (MX verified, server disconnected)"
     except socket.timeout:
-        return False, "Connection timed out"
+        return None, "Partial validation (MX verified, SMTP timed out)"
+    except OSError:
+        return None, "Partial validation (MX verified, SMTP blocked)"
     except Exception as e:
-        return False, f"SMTP error: {str(e)[:50]}"
+        return None, f"Partial validation (MX verified, error: {str(e)[:30]})"
 
 
 def validate_email(email: str) -> ValidationResult:
