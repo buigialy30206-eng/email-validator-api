@@ -16,6 +16,10 @@ import dns.resolver
 
 app = FastAPI(title="Email Validator API", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
 
 _email_re = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
 
