@@ -12,13 +12,10 @@ from typing import Optional
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from ratelimit import RateLimitMiddleware
 import dns.resolver
 
 app = FastAPI(title="Email Validator API", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-app.add_middleware(RateLimitMiddleware)
-
 
 _email_re = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
 
@@ -91,8 +88,6 @@ def validate_email(email: str) -> ValidationResult:
         mx_server=mx,
         domain=domain,
     )
-
-
 
 @app.get("/")
 async def root():
