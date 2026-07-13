@@ -95,7 +95,7 @@ def validate_email(email: str) -> ValidationResult:
 
 @app.get("/")
 async def root():
-    return {"service": "Email Validator API", "version": "1.0.0", "endpoints": {"/validate": "GET ?email=test@example.com"}}
+    return {"service": "Email Validator API", "version": "1.0.0", "related": ["Domain WHOIS API", "Company Info API"], "endpoints": {"/validate": "GET ?email=test@example.com"}}
 
 @app.get("/validate", response_model=ValidationResult)
 async def validate(email: str = Query(..., description="Email address to validate")):
