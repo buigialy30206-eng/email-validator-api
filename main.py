@@ -9,35 +9,18 @@ import smtplib
 import socket
 from typing import Optional
 
-from fastapi import FastAPI, Depends, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from ratelimit import RateLimitMiddleware
 import dns.resolver
-
-import time as _t, threading as _th
-_rl_win, _rl_max, _rl_hits, _rl_lk = 60, 60, {}, _th.Lock()
-
-async def _rate_limit(request):
-    from fastapi import Request, HTTPException
-    ip = (request.headers.get('X-Forwarded-For','') or request.headers.get('X-Real-IP','') or (request.client.host if request.client else '127.0.0.1')).split(',')[0].strip()
-    now = _t.time()
-    with _rl_lk:
-        e = _rl_hits.get(ip)
-        if e:
-            if now - e['s'] > _rl_win: e['s'], e['c'] = now, 1
-            else:
-                e['c'] += 1
-                if e['c'] > _rl_max: raise HTTPException(429, 'Too many requests')
-        else: _rl_hits[ip] = {'s': now, 'c': 1}
-    return True
 
 app = FastAPI(title="Email Validator API", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-
+app.add_middleware(RateLimitMiddleware)
 
 
 _email_re = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
-
 
 class ValidationResult(BaseModel):
     email: str
@@ -45,7 +28,6 @@ class ValidationResult(BaseModel):
     reason: str
     mx_server: Optional[str] = None
     domain: Optional[str] = None
-
 
 def get_mx(domain: str) -> Optional[str]:
     """Get MX server for domain."""
@@ -56,7 +38,6 @@ def get_mx(domain: str) -> Optional[str]:
         return str(mx.exchange).rstrip(".")
     except Exception:
         return None
-
 
 def smtp_check(email: str, mx: str) -> tuple[bool, str]:
     """Verify email exists on SMTP server."""
@@ -83,7 +64,6 @@ def smtp_check(email: str, mx: str) -> tuple[bool, str]:
         return None, "Partial validation (MX verified, SMTP blocked)"
     except Exception as e:
         return None, f"Partial validation (MX verified, error: {str(e)[:30]})"
-
 
 def validate_email(email: str) -> ValidationResult:
     """Full email validation pipeline."""
@@ -114,17 +94,14 @@ def validate_email(email: str) -> ValidationResult:
 
 
 
-
 @app.get("/")
 async def root():
     return {"service": "Email Validator API", "version": "1.0.0", "endpoints": {"/validate": "GET ?email=test@example.com"}}
-
 
 @app.get("/validate", response_model=ValidationResult)
 async def validate(email: str = Query(..., description="Email address to validate")):
     """Validate a single email address."""
     return validate_email(email)
-
 
 @app.post("/validate-batch")
 async def validate_batch(emails: list[str]):
